@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>📡 Live Market Data</h1>
+    <p class="subtitle">Fetch real-time lit market data from Yahoo Finance and estimate dark pool activity</p>
+</div>
+
+<div class="card">
+    <h2>Fetch Live Data</h2>
+    <form id="liveForm" class="run-form">
+        <div class="form-group"><label>Tickers</label><input type="text" id="tickers" value="SPY, QQQ, AAPL" style="width:300px"></div>
+        <div class="form-group"><label>Interval</label><select id="interval"><option value="1m">1m</option><option value="5m" selected>5m</option><option value="15m">15m</option><option value="1h">1h</option></select></div>
+        <div class="form-group"><label>Period</label><select id="period"><option value="1d" selected>1d</option><option value="5d">5d</option></select></div>
+        <button type="submit" id="liveBtn" class="btn btn-primary">📡 Fetch Data</button>
+    </form>
+    <div id="liveStatus" class="status"></div>
+</div>
+
+<div id="liveResults" class="card-grid" style="display:none;"></div>
+
+<script>
+document.getElementById('liveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('liveBtn');
+    const status = document.getElementById('liveStatus');
+    const results = document.getElementById('liveResults');
+    btn.disabled = true; btn.textContent = '⏳ Fetching...';
+    status.innerHTML = '<div class="spinner"></div> Fetching...';
+    const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim()).filter(Boolean);
+    try {
+        const resp = await fetch('/api/live', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tickers, interval: document.getElementById('interval').value, period: document.getElementById('period').value})
+        });
+        const data = await resp.json();
+        status.innerHTML = '<span class="success">✅ Data fetched</span>';
+        results.style.display = 'grid';
+        results.innerHTML = Object.entries(data).map(([ticker, info]) => `
+            <div class="card">
+                <h2>${ticker}</h2>
+                <table class="metric-table">
+                    <tr><td>Bars</td><td class="val">${info.n_bars}</td></tr>
+                    <tr><td>Volume</td><td class="val">${info.total_volume.toLocaleString()}</td></tr>
+                    <tr><td>Est. Dark</td><td class="val">${info.dark_volume_est.toLocaleString()}</td></tr>
+                    <tr><td>Dark Share</td><td class="val">${info.dark_share_pct.toFixed(1)}%</td></tr>
+                </table>
+            </div>
+        `).join('');
+    } catch (err) {
+        status.innerHTML = '<span class="error">❌ ' + err.message + '</span>';
+    }
+    btn.disabled = false; btn.textContent = '📡 Fetch Data';
+});
+</script>
+{% endblock %}

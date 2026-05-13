@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>📊 Detection Results</h1>
+    {% if meta %}<p class="meta">{{ meta.n_tickers }} tickers · {{ meta.n_ticks }} ticks · {{ meta.elapsed }}s</p>{% endif %}
+</div>
+
+{% if not results %}
+<div class="card empty-state"><h3>No results yet</h3><p><a href="/">Run the pipeline</a> first.</p></div>
+{% else %}
+<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-value">{{ "%.1f"|format(score.overall) }}/100</div><div class="kpi-label">Overall</div></div>
+    <div class="kpi"><div class="kpi-value">{{ sim.total_trades }}</div><div class="kpi-label">Trades</div></div>
+    <div class="kpi"><div class="kpi-value">{{ sim.dark_trades }} ({{ "%.1f"|format(sim.dark_pct) }}%)</div><div class="kpi-label">Dark</div></div>
+    <div class="kpi"><div class="kpi-value">{{ sim.iceberg_trades }} ({{ "%.1f"|format(sim.iceberg_pct) }}%)</div><div class="kpi-label">Iceberg</div></div>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <h2>⚡ VPIN</h2>
+        <table class="metric-table">
+            <tr><td>Current</td><td class="val">{{ "%.4f"|format(vpin.current_vpin) }}</td></tr>
+            <tr><td>Mean</td><td class="val">{{ "%.4f"|format(vpin.mean) }}</td></tr>
+            <tr><td>Max</td><td class="val">{{ "%.4f"|format(vpin.max) }}</td></tr>
+            <tr><td>Toxic %</td><td class="val">{{ "%.1f"|format(vpin.toxic_pct) }}%</td></tr>
+        </table>
+    </div>
+    <div class="card">
+        <h2>🧊 Iceberg</h2>
+        <table class="metric-table">
+            <tr><td>Active</td><td class="val">{{ iceberg.n_active }}</td></tr>
+            <tr><td>Native</td><td class="val">{{ iceberg.n_native }}</td></tr>
+            <tr><td>Hidden Vol</td><td class="val">{{ "{:,}".format(iceberg.total_estimated_hidden) }}</td></tr>
+            <tr><td>Confidence</td><td class="val">{{ "%.1f"|format(iceberg.avg_confidence * 100) }}%</td></tr>
+        </table>
+    </div>
+    <div class="card">
+        <h2>🌑 Dark Volume</h2>
+        <table class="metric-table">
+            <tr><td>Dark Trades</td><td class="val">{{ dark.n_dark }}</td></tr>
+            <tr><td>Dark %</td><td class="val">{{ "%.1f"|format(dark.dark_volume_pct) }}%</td></tr>
+            <tr><td>Avg Size</td><td class="val">{{ "%.0f"|format(dark.avg_dark_trade_size) }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{% if alerts %}
+<div class="card">
+    <h2>🚨 Alerts ({{ alerts|length }})</h2>
+    {% for a in alerts[:10] %}
+    <div class="alert-row alert-{{ a.level.value }}">
+        <span>{{ {'critical': '🚨', 'warning': '⚠️', 'watch': '👀', 'info': 'ℹ️'}[a.level.value] }}</span>
+        <span style="font-family:monospace;color:var(--accent)">{{ a.module }}</span>
+        <span>{{ a.message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

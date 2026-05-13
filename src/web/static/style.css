@@ -1,0 +1,57 @@
+/* ── Dark Pool Detection — Styles ── */
+:root {
+    --bg: #0d1117; --bg-card: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e;
+    --accent: #58a6ff; --green: #3fb950; --yellow: #d2991d; --red: #f85149;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh;
+}
+.navbar { display: flex; justify-content: space-between; align-items: center; padding: 0 2rem; height: 56px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.nav-brand a { font-size: 1.2rem; font-weight: 700; color: var(--text); text-decoration: none; }
+.nav-links { display: flex; gap: 0.25rem; }
+.nav-link { padding: 0.5rem 1rem; border-radius: 6px; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+.nav-link:hover { color: var(--text); background: var(--bg); }
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.hero { text-align: center; padding: 3rem 0 2rem; }
+.hero h1 { font-size: 2.5rem; }
+.subtitle { color: var(--text-muted); font-size: 1.1rem; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.card h2 { font-size: 1.15rem; margin-bottom: 1rem; color: var(--accent); }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; }
+.kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+.run-form { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.form-group label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+.form-group input, .form-group select { padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
+.btn { padding: 0.6rem 1.5rem; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--bg); color: var(--accent); border: 1px solid var(--border); }
+.status { margin-top: 1rem; }
+.status .success { color: var(--green); }
+.status .error { color: var(--red); }
+.spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.metric-table { width: 100%; border-collapse: collapse; }
+.metric-table td { padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.metric-table td:last-child { text-align: right; }
+.metric-table .val { font-weight: 600; font-family: monospace; }
+.score-bar-row { display: flex; align-items: center; gap: 1rem; }
+.score-bar-track { flex: 1; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.score-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 5px; }
+.alert-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--bg); font-size: 0.85rem; }
+.alert-critical { border-left: 3px solid #da3633; }
+.alert-warning { border-left: 3px solid #d2991d; }
+.alert-info { border-left: 3px solid #8b949e; }
+.footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.75rem; border-top: 1px solid var(--border); margin-top: 3rem; }
+a { color: var(--accent); }
+.empty-state { text-align: center; padding: 3rem; }
+.empty-state h3 { font-size: 1.3rem; }
+.muted { color: var(--text-muted); }
+.tag { display: inline-block; padding: 0.15rem 0.5rem; background: var(--bg); border-radius: 4px; font-size: 0.75rem; color: var(--text-muted); font-family: monospace; }

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>🚨 Alert History</h1>
+    {% if summary %}<p class="meta">{{ summary.n_alerts }} total · {{ summary.critical_count }} critical</p>{% endif %}
+</div>
+
+{% if summary and summary.n_alerts > 0 %}
+<div class="kpi-grid">
+    {% for level, count in summary.by_level.items() %}
+    <div class="kpi"><div class="kpi-value">{{ count }}</div><div class="kpi-label">{{ level|upper }}</div></div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Alert Log</h2>
+    {% if alerts %}
+    {% for a in alerts %}
+    <div class="alert-row alert-{{ a.level.value }}">
+        <span>{{ {'critical': '🚨', 'warning': '⚠️', 'watch': '👀', 'info': 'ℹ️'}[a.level.value] }}</span>
+        <span style="color:var(--text-muted);font-size:0.75rem;font-family:monospace">{{ a.iso_time }}</span>
+        <span style="font-family:monospace;color:var(--accent)">{{ a.module }}</span>
+        <span>{{ a.message }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><h3>✅ No alerts</h3><p>Run the <a href="/">pipeline</a> to generate alerts.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

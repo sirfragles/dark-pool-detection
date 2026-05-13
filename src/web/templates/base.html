@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌑 Dark Pool Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">🌑 Dark Pool Detection</a></div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/results" class="nav-link">Results</a>
+            <a href="/alerts" class="nav-link">Alerts</a>
+            <a href="/live" class="nav-link">Live Data</a>
+            <a href="/api/health" class="nav-link" style="border:1px solid var(--border);font-family:monospace;font-size:0.8rem">API</a>
+        </div>
+    </nav>
+    <main class="container">{% block content %}{% endblock %}</main>
+    <footer class="footer">
+        <span>Dark Pool Detection System v0.1</span>
+        <span>|</span>
+        <span>Research use only — no investment advice</span>
+    </footer>
+</body>
+</html>

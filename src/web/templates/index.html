@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero">
+    <h1>🌑 Dark Pool Detection</h1>
+    <p class="subtitle">Order flow analysis · Iceberg detection · VPIN monitoring · ML predictions</p>
+</div>
+
+<div class="card">
+    <h2>▶ Run Detection Pipeline</h2>
+    <form id="runForm" class="run-form">
+        <div class="form-group"><label>Tickers</label><input type="number" id="n_tickers" value="5" min="1" max="20"></div>
+        <div class="form-group"><label>Ticks</label><input type="number" id="n_ticks" value="2000" min="100" max="50000" step="100"></div>
+        <div class="form-group"><label>Seed</label><input type="number" id="seed" value="42" min="0" max="99999"></div>
+        <button type="submit" id="runBtn" class="btn btn-primary">🚀 Run Pipeline</button>
+    </form>
+    <div id="runStatus" class="status"></div>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>📊 Latest Results</h2>
+    <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-value">{{ "%.1f"|format(results.detection_score.overall) }}/100</div><div class="kpi-label">Score</div></div>
+        <div class="kpi"><div class="kpi-value">{{ "%.1f"|format(results.simulation.dark_pct) }}%</div><div class="kpi-label">Dark Share</div></div>
+        <div class="kpi"><div class="kpi-value">{{ "%.3f"|format(results.vpin.mean) }}</div><div class="kpi-label">VPIN</div></div>
+        <div class="kpi"><div class="kpi-value">{{ results.iceberg.n_active }}</div><div class="kpi-label">Icebergs</div></div>
+    </div>
+    <a href="/results" class="btn btn-secondary">📋 Full Report →</a>
+</div>
+{% else %}
+<div class="card empty-state"><h3>👋 No results yet</h3><p>Click Run Pipeline above.</p></div>
+{% endif %}
+
+<script>
+document.getElementById('runForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('runBtn');
+    const status = document.getElementById('runStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ Running...';
+    status.innerHTML = '<div class="spinner"></div> Running...';
+    const formData = new FormData();
+    formData.set('n_tickers', document.getElementById('n_tickers').value);
+    formData.set('n_ticks', document.getElementById('n_ticks').value);
+    formData.set('seed', document.getElementById('seed').value);
+    try {
+        const resp = await fetch('/run', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+            status.innerHTML = '<span class="success">✅ Score: ' + data.score.toFixed(1) + '/100 in ' + data.elapsed.toFixed(1) + 's</span>';
+            setTimeout(() => location.href = '/results', 800);
+        } else {
+            status.innerHTML = '<span class="error">❌ ' + data.message + '</span>';
+        }
+    } catch (err) {
+        status.innerHTML = '<span class="error">❌ ' + err.message + '</span>';
+    }
+    btn.disabled = false;
+    btn.textContent = '🚀 Run Pipeline';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+# ── Git ──
+.git/
+.gitignore
+.gitattributes
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.egg
+.eggs/
+
+# ── Virtualenv ──
+venv/
+.venv/
+env/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Data (keep small, cache volumes mount from host) ──
+data/raw/yfinance/*.parquet
+data/parquet/
+data/models/*.joblib
+data/models/*.pt
+
+# ── Output (generated at runtime) ──
+output/*.parquet
+output/*.csv
+output/*.jsonl
+output/*.json
+output/*.txt
+
+# ── Config local overrides ──
+config/config.local.yaml
+
+# ── Docker ──
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# ── Docs / plans ──
+PLAN.md
+*.md

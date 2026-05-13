@@ -1,0 +1,85 @@
+# Dark Pool Detection — Configuration
+# Copy to config.local.yaml and customize
+
+system:
+  name: "dark-pool-detection"
+  version: "0.1.0"
+  log_level: "INFO"
+  data_dir: "data"
+  output_dir: "output"
+
+data_sources:
+  finra:
+    enabled: true
+    base_url: "https://www.finra.org/finra-data/browse-catalog/alternative-trading-system"
+    update_frequency: "weekly"  # FINRA publishes weekly
+    
+  yfinance:
+    enabled: true
+    tickers:
+      - "AAPL"
+      - "MSFT"
+      - "NVDA"
+      - "GOOGL"
+      - "AMZN"
+      - "META"
+      - "TSLA"
+      - "SPY"
+      - "QQQ"
+      - "IWM"
+    interval: "1m"  # 1m, 5m, 1h, 1d
+    period: "7d"
+    
+  polygon:
+    enabled: false
+    api_key: ""  # Fill if available
+    websocket: false
+    
+storage:
+  parquet_path: "data/parquet"
+  sqlite_path: "data/dark_pool.db"
+  
+detection:
+  iceberg:
+    enabled: true
+    min_confidence: 0.6
+    lookback_window: 100  # ticks
+    
+  vpin:
+    enabled: true
+    volume_bucket_size: 50  # volume bars
+    vpin_threshold: 0.8  # toxicity threshold
+    
+  dark_volume:
+    enabled: true
+    anomaly_std_threshold: 3.0
+    
+  trader_type:
+    enabled: true
+    n_clusters: 4  # Institution, HFT, Retail, MM
+    min_samples_per_type: 100
+
+ml:
+  iceberg_predictor:
+    model: "xgboost"
+    train_window_days: 30
+    
+  dark_trade_predictor:
+    model: "lstm"
+    sequence_length: 50
+    prediction_horizon_seconds: 5
+    
+  trader_fingerprint:
+    method: "kmeans"
+    features:
+      - "trade_size_mean"
+      - "trade_interval_mean"
+      - "time_of_day_preference"
+      - "volume_share"
+
+simulation:
+  n_tickers: 5
+  n_ticks_per_day: 390  # 1 tick/min, 6.5h trading day
+  iceberg_probability: 0.15
+  dark_trade_probability: 0.25
+  informed_trader_probability: 0.05

@@ -387,18 +387,18 @@ Walk-forward out-of-sample testing with time-series cross-validation.
 ║         DARK POOL DETECTION — PIPELINE REPORT            ║
 ╠══════════════════════════════════════════════════════════╣
 ║  📊 SIMULATION                                           ║
-║     Trades total:        4,180                            ║
-║     Dark pool:             963 (23.0%)                    ║
-║     Iceberg:             1,805 (43.2%)                    ║
-║  🧊 ICEBERG DETECTION                                     ║
-║     Active icebergs:     2,930                            ║
-║     Est. hidden vol:  1,354,558 shares                    ║
-║     Avg confidence:     91.58%                            ║
-║  ⚡ VPIN                                                   ║
-║     Mean:                0.329                            ║
-║  📈 DETECTION QUALITY                                      ║
-║     Iceberg:  100.0   VPIN:  50.0   Dark:  99.0           ║
-║     OVERALL:              83.0/100                        ║
+║     Trades total:        4,180                           ║
+║     Dark pool:             963 (23.0%)                   ║
+║     Iceberg:             1,805 (43.2%)                   ║
+║  🧊 ICEBERG DETECTION                                    ║
+║     Active icebergs:     2,930                           ║
+║     Est. hidden vol:  1,354,558 shares                   ║
+║     Avg confidence:     91.58%                           ║
+║  ⚡ VPIN                                                 ║
+║     Mean:                0.329                           ║
+║  📈 DETECTION QUALITY                                    ║
+║     Iceberg:  100.0   VPIN:  50.0   Dark:  99.0          ║
+║     OVERALL:              83.0/100                       ║
 ╚══════════════════════════════════════════════════════════╝
 ```
 

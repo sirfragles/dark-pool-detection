@@ -1,6 +1,13 @@
 """Trader Type Classification — Faza 5.
 
-Classifies market participants by trading signature.
+Classifies market participants by trading signature using temporal
+clustering and trade pattern analysis. Identifies:
+- Institution: Large blocks, dark pool preference, VWAP execution
+- HFT: Ultra-short holding, co-located sub-ms patterns
+- Retail: Small odd-lot trades, market orders, round numbers
+- Market Maker: Two-sided flow, spread capture, inventory management
+
+Faza 9 (BACD): Extended with behavioral duration features.
 """
 
 from dataclasses import dataclass
@@ -34,20 +41,80 @@ class TraderProfile:
 
 
 class TraderTypeClassifier:
-    """Classify market participants by behavioral signature."""
+    """Classify market participants by behavioral signature.
+
+    Uses unsupervised learning (GMM) to discover natural clusters
+    in trading behavior, then maps clusters to known types.
+    """
 
     FEATURES = [
-        "trade_size_mean", "trade_size_std", "trade_interval_mean",
-        "trade_interval_std", "dark_share", "lit_volume_share",
-        "morning_preference", "midday_preference", "afternoon_preference",
+        "trade_size_mean",
+        "trade_size_std",
+        "trade_interval_mean",
+        "trade_interval_std",
+        "dark_share",
+        "lit_volume_share",
+        "morning_preference",
+        "midday_preference",
+        "afternoon_preference",
         "size_volatility_ratio",
+        # BACD features (Faza 9)
+        "bacd_burst_ratio",
+        "bacd_burst_size_mean",
+        "bacd_interval_mean",
+        "bacd_interval_skewness",
+        "bacd_weibull_shape",
+        "bacd_duration_acf_lag1",
+        "bacd_diurnal_deviation",
+        "bacd_duration_cv",
+        "bacd_burstiness_index",
     ]
 
     PROTOTYPES = {
-        "institution": {"trade_size_mean": 2.0, "trade_interval_mean": 1.0, "dark_share": 2.0, "morning_preference": 0.0, "midday_preference": 1.0},
-        "hft": {"trade_size_mean": -1.0, "trade_interval_mean": -2.0, "dark_share": -1.0, "morning_preference": 0.5, "midday_preference": 0.0},
-        "retail": {"trade_size_mean": -1.5, "trade_interval_mean": 0.5, "dark_share": -1.5, "morning_preference": 0.5, "midday_preference": -0.5},
-        "market_maker": {"trade_size_mean": 0.5, "trade_interval_mean": -1.0, "dark_share": 0.0, "morning_preference": 1.0, "midday_preference": 0.5},
+        "institution": {
+            "trade_size_mean": 2.0,
+            "trade_interval_mean": 1.0,
+            "dark_share": 2.0,
+            "morning_preference": 0.0,
+            "midday_preference": 1.0,
+            "bacd_burst_ratio": 1.0,
+            "bacd_interval_skewness": 0.5,
+            "bacd_duration_acf_lag1": 0.5,
+            "bacd_burstiness_index": -0.3,
+        },
+        "hft": {
+            "trade_size_mean": -1.0,
+            "trade_interval_mean": -2.0,
+            "dark_share": -1.0,
+            "morning_preference": 0.5,
+            "midday_preference": 0.0,
+            "bacd_burst_ratio": 2.0,
+            "bacd_interval_skewness": 1.5,
+            "bacd_duration_acf_lag1": 0.8,
+            "bacd_burstiness_index": -0.8,
+        },
+        "retail": {
+            "trade_size_mean": -1.5,
+            "trade_interval_mean": 0.5,
+            "dark_share": -1.5,
+            "morning_preference": 0.5,
+            "midday_preference": -0.5,
+            "bacd_burst_ratio": -1.0,
+            "bacd_interval_skewness": -0.3,
+            "bacd_duration_acf_lag1": 0.0,
+            "bacd_burstiness_index": 0.3,
+        },
+        "market_maker": {
+            "trade_size_mean": 0.5,
+            "trade_interval_mean": -1.0,
+            "dark_share": 0.0,
+            "morning_preference": 1.0,
+            "midday_preference": 0.5,
+            "bacd_burst_ratio": 0.5,
+            "bacd_interval_skewness": 0.2,
+            "bacd_duration_acf_lag1": -0.2,
+            "bacd_burstiness_index": 0.0,
+        },
     }
 
     def __init__(self, n_clusters: int = 4, method: str = "gmm", min_samples_per_type: int = 50, random_state: int = 42):
@@ -65,11 +132,35 @@ class TraderTypeClassifier:
         self._is_fitted = False
 
     def extract_features(
-        self, trades: pd.DataFrame, ticker_col: str = "ticker", volume_col: str = "volume",
-        timestamp_col: str = "timestamp", dark_col: str = "is_dark",
+        self,
+        trades: pd.DataFrame,
+        ticker_col: str = "ticker",
+        volume_col: str = "volume",
+        timestamp_col: str = "timestamp",
+        dark_col: str = "is_dark",
+        use_bacd: bool = True,
     ) -> pd.DataFrame:
+        """Extract behavioral features from tick-level trade data.
+
+        Groups trades into trader-specific sessions using:
+        - Temporal proximity (gap < threshold → same trader)
+        - Trade size consistency
+        - Venue pattern matching
+        - BACD duration analysis (Faza 9)
+        """
         if trades.empty:
             return pd.DataFrame(columns=self.FEATURES)
+
+        if use_bacd:
+            try:
+                from src.detection.bacd import BACDAnalyzer
+                bacd = BACDAnalyzer(min_trades=5)
+            except ImportError:
+                bacd = None
+                use_bacd = False
+        else:
+            bacd = None
+
         features_list = []
         for ticker, group in trades.groupby(ticker_col):
             group = group.sort_values(timestamp_col)
@@ -79,9 +170,14 @@ class TraderTypeClassifier:
             for sid, session in group.groupby("session_id"):
                 feat = self._session_features(session, volume_col, timestamp_col, dark_col)
                 if feat is not None:
+                    if bacd is not None:
+                        profile = bacd.analyze_session(session, timestamp_col, volume_col)
+                        bacd_feats = bacd.to_feature_vector(profile)
+                        feat.update(bacd_feats)
                     feat["ticker"] = ticker
                     feat["session_id"] = f"{ticker}_{sid}"
                     features_list.append(feat)
+
         if not features_list:
             return pd.DataFrame(columns=self.FEATURES + ["ticker", "session_id"])
         return pd.DataFrame(features_list)
@@ -192,10 +288,7 @@ class TraderTypeClassifier:
                         proto_vec[feature_indices[feat]] = val
                 norm_c = np.linalg.norm(centroid)
                 norm_p = np.linalg.norm(proto_vec)
-                if norm_c > 0 and norm_p > 0:
-                    sim = np.dot(centroid, proto_vec) / (norm_c * norm_p)
-                else:
-                    sim = 0.0
+                sim = float(np.dot(centroid, proto_vec) / (norm_c * norm_p)) if norm_c > 0 and norm_p > 0 else 0.0
                 if sim > best_sim:
                     best_sim = sim
                     best_type = type_name
@@ -204,15 +297,10 @@ class TraderTypeClassifier:
     def summary(self) -> dict:
         if not self._profiles:
             return {"n_profiles": 0}
-        df = pd.DataFrame([{
-            "type": p.trader_type, "confidence": p.confidence,
-            "n_trades": p.n_trades, "dark_share": p.dark_share,
-            "tod_preference": p.time_of_day_preference,
-        } for p in self._profiles])
-        type_summary = df.groupby("type").agg(
-            n_sessions=("type", "count"), avg_confidence=("confidence", "mean"),
-            total_trades=("n_trades", "sum"), avg_dark_share=("dark_share", "mean"),
-        ).to_dict(orient="index")
+        df = pd.DataFrame([{"type": p.trader_type, "confidence": p.confidence,
+                           "n_trades": p.n_trades, "dark_share": p.dark_share} for p in self._profiles])
+        type_summary = df.groupby("type").agg(n_sessions=("type", "count"), avg_confidence=("confidence", "mean"),
+                                              total_trades=("n_trades", "sum"), avg_dark_share=("dark_share", "mean")).to_dict(orient="index")
         return {"n_profiles": len(self._profiles), "types": list(type_summary.keys()),
                 "type_details": type_summary, "cluster_mapping": self._cluster_labels}
 
@@ -222,13 +310,9 @@ class TraderTypeClassifier:
         dist = {}
         for p in self._profiles:
             if p.trader_type not in dist:
-                dist[p.trader_type] = {"n_sessions": 0, "total_trades": 0, "total_volume": 0.0, "dark_share_sum": 0.0}
-            d = dist[p.trader_type]
-            d["n_sessions"] += 1
-            d["total_trades"] += p.n_trades
-            d["dark_share_sum"] += p.dark_share
-        for t, d in dist.items():
-            d["avg_dark_share"] = d["dark_share_sum"] / max(d["n_sessions"], 1)
+                dist[p.trader_type] = {"n_sessions": 0, "total_trades": 0}
+            dist[p.trader_type]["n_sessions"] += 1
+            dist[p.trader_type]["total_trades"] += p.n_trades
         return dist
 
     def reset(self) -> None:

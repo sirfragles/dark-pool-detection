@@ -163,7 +163,45 @@ def api_report():
         return jsonify({"error": "No report available"}), 404
     pipeline = DarkPoolPipeline()
     pipeline._latest_results = _last_results
-    return jsonify({"report": pipeline.report()})
+    report = pipeline.report()
+    return jsonify({"report": report})
+
+
+@app.route("/api/explain")
+def api_explain():
+    """XAI: explain detection results and feature contributions."""
+    from src.ml.explainability import ModelExplainer
+    if not _last_results:
+        return jsonify({"error": "No results yet"}), 404
+    explainer = ModelExplainer()
+    decomposition = explainer.decompose_detection_score(_last_results)
+    return jsonify({"score_decomposition": decomposition})
+
+
+@app.route("/api/duration")
+def api_duration():
+    """BACD duration analysis on simulated data."""
+    from src.detection.bacd import BACDAnalyzer
+    n_ticks = int(request.args.get("ticks", 2000))
+    seed = int(request.args.get("seed", 42))
+    sim = OrderBookSimulator(n_tickers=3, n_ticks=n_ticks, seed=seed)
+    df = sim.generate()
+    trades = df[df["volume"] > 0]
+    analyzer = BACDAnalyzer()
+    results = {}
+    for ticker in trades["ticker"].unique():
+        session = trades[trades["ticker"] == ticker]
+        profile = analyzer.analyze_session(session)
+        if profile:
+            results[ticker] = {
+                "n_trades": profile.n_trades,
+                "burst_ratio": profile.burst_ratio,
+                "interval_mean_ms": profile.interval_mean,
+                "weibull_shape": profile.weibull_shape,
+                "weibull_r2": profile.weibull_r2,
+                "duration_acf_lag1": profile.duration_acf_lag1,
+            }
+    return jsonify(results)
 
 
 def _make_serializable(obj):

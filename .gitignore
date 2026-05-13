@@ -1,0 +1,43 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.egg
+.eggs/
+
+# ── Virtualenv ──
+venv/
+.venv/
+env/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Internal docs (not for public repo) ──
+PLAN.md
+COMPETITIVE_ANALYSIS.md
+
+# ── Generated data ──
+data/raw/yfinance/*.parquet
+data/parquet/
+data/models/*.joblib
+data/models/*.pt
+
+# ── Generated output ──
+output/*.parquet
+output/*.csv
+output/*.jsonl
+output/*.json
+output/*.txt
+
+# ── Config local overrides ──
+config/config.local.yaml

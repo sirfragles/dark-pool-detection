@@ -1,296 +1,267 @@
-# 🕵️ Dark Pool Detection — Analiza istniejących repozytoriów
+# 🔬 Dark Pool Detection — Deep Technical Audit
 
-Analiza 4 repozytoriów GitHub związanych z wykrywaniem dark pool activity.
-Data badania: 2026-05-13
-
----
-
-## 1. pranay0703/dark-pool-fraud-detection
-
-🔗 https://github.com/pranay0703/dark-pool-fraud-detection
-
-### Metryki
-| Pole | Wartość |
-|---|---|
-| Język | Python |
-| Gwiazdki | 0 |
-| Ostatnia aktualizacja | Sep 19, 2025 |
-| Licencja | Brak |
-
-### Opis
-System AI do wykrywania fraudu w dark pool tradingu w czasie rzeczywistym, wykorzystujący **Temporal Graph Neural Networks (TGNN)** i architektury **Transformer**. To najbardziej zaawansowany ML spośród analizowanych repo.
-
-### Architektura kodu
-```
-dark_pool_fraud_detection/
-├── configs/              # Konfiguracje modeli
-├── src/
-│   ├── data_pipeline/    # Pipeline pobierania i przetwarzania danych
-│   ├── models/           # Definicje modeli (TGNN, Transformer)
-│   ├── training/         # Logika trenowania
-│   └── inference/        # Inferencja w czasie rzeczywistym
-├── setup.py              # 10.7 KB — rozbudowana instalacja
-├── train.py              # 4.6 KB — skrypt treningowy
-├── demo.py               # 20.5 KB — demo aplikacja
-├── evaluate.py           # 18 KB — ewaluacja modeli
-└── requirements.txt      # 312 B — zależności
-```
-
-### Stack technologiczny
-- **Modele**: Temporal GNN + Transformer (PyTorch)
-- **Dane**: Symulowane dark pool (prawdopodobnie syntetyczne)
-- **Pipeline**: data_pipeline → training → inference
-- **Wielkość**: ~54 KB kodu Python (src + skrypty)
-
-### Ciekawe aspekty
-1. **Temporal GNN**: Grafowe sieci neuronowe z wymiarem czasowym — idealne do modelowania relacji między traderami, venue'ami i transakcjami w czasie
-2. **Transformer**: Wykrywanie sekwencyjnych wzorców fraudu w strumieniu transakcji
-3. **setup.py (10.7 KB)**: Sugeruje rozbudowany system z wieloma zależnościami i konfiguracjami
-4. **demo.py (20.5 KB)**: Największy plik — prawdopodobnie zawiera wizualizacje i interfejs demo
-5. **evaluate.py (18 KB)**: Rozbudowana ewaluacja modeli
-
-### Podobieństwa do naszego projektu
-- Python-first
-- Symulowane dane
-- Modularna architektura (data/model/training)
-- Podobny pipeline: dane → detekcja → predykcja
-
-### Różnice
-- Frauds ≠ dark pool detection — inne zadanie (klasyfikacja fraudu vs detekcja aktywności)
-- TGNN + Transformer vs nasz XGBoost + LSTM
-- Brak web UI / API
-- Brak Docker / CI/CD
-- Brak testów
+Dogłębna analiza kodu źródłowego 3 repozytoriów (pomijam #4 krypto).
+Data: 2026-05-13
 
 ---
 
-## 2. sagarvrma/darkpooldetector
+## 1. pranay0703/dark-pool-fraud-detection — GŁĘBOKA ANALIZA KODU
 
-🔗 https://github.com/sagarvrma/darkpooldetector
+### Co NAPRAWDĘ jest w środku (przeczytałem kod źródłowy)
 
-### Metryki
-| Pole | Wartość |
+```
+src/models/
+├── temporal_gnn.py          (13.6 KB)  — TGNN z GAT + Memory Module
+├── transformer_model.py     (13.4 KB)  — Transformer z positional encoding
+├── hybrid_model.py          (14.5 KB)  — HAR-BACD-V: Heterogeneous Autoregressive + 
+│                                         Behavioral Conditional Duration
+├── integrated_model.py      (17.1 KB)  — Ensemble TGNN + Transformer + HAR-BACD
+├── explainability.py        (17.2 KB)  — SHAP + LIME (XAI)
+└── uncertainty_quantification.py (15.9 KB) — Bayesian NN + SNGP
+
+src/data_pipeline/
+├── temporal_graph.py        (11.7 KB)  — Event-Based Temporal Graph construction
+└── data_loader.py           (9.4 KB)   — Data loading + preprocessing
+
+src/training/
+└── trainer.py               (25.4 KB)  — Full training loop z augmentacją
+```
+
+### Co robi LEPIEJ niż my
+
+#### 1. Temporal Graph Neural Network z GAT (Graph Attention)
+```python
+# Ich kod — prawdziwy TGNN z mechanizmem pamięci:
+class MemoryModule(nn.Module):
+    def forward(self, node_features, memory, update_vector):
+        # GRU-style memory: update_gate * old + (1-update_gate) * new
+        update_gate = self.update_net(combined)
+        new_memory = self.new_net(combined)
+        return update_gate * memory + (1 - update_gate) * new_memory
+
+class TemporalGraphLayer(nn.Module):
+    def __init__(self, ...):
+        self.gat = GATConv(in_channels=..., heads=8)  # Multi-head attention
+        self.memory = MemoryModule(...)  # Persistent memory across time
+        self.layer_norm = nn.LayerNorm(hidden_dim)
+        self.residual_proj = nn.Linear(...)  # Residual connection
+```
+**Nasza przewaga tutaj**: Mamy Iceberg Detection + VPIN z literatury — oni wykrywają FRAUD (inne zadanie). Ich TGNN jest świetny do relacji trader-trader, nie do samej detekcji dark pool.
+
+#### 2. HAR-BACD-V Hybrid Model (Multi-Scale)
+```python
+class HeterogeneousAutoregressive(nn.Module):
+    # HAR model z 3 skalami czasowymi: daily (1), weekly (5), monthly (22)
+    har_lags = [1, 5, 22]
+    # Każda skala ma własną sieć → potem agregacja
+
+class BehavioralAutoregressiveConditionalDuration(nn.Module):
+    # BACD model — modelowanie czasu MIĘDZY transakcjami
+    # To jest kluczowe dla dark pool! Instytucje mają inne interwały niż retail.
+```
+**To jest coś czego NIE MAMY** — modelowanie duration między transakcjami. Nasz TraderTypeClassifier robi to powierzchownie przez `trade_interval_mean`. BACD jest specjalizowanym modelem ekonometrycznym do tego.
+
+#### 3. XAI (SHAP + LIME) — Explainability
+```python
+class ModelExplainer:
+    def setup_shap_explainer(self, background_data, explainer_type='kernel'):
+        # Obsługa 3 typów: KernelExplainer, DeepExplainer, GradientExplainer
+```
+**Tego u nas BRAK** — pokazujemy feature importance z XGBoost, ale nie mamy pełnego SHAP/LIME.
+
+#### 4. Uncertainty Quantification (Bayesian NN + SNGP)
+```python
+class BayesianLinear(nn.Module):
+    # Wagi jako rozkłady prawdopodobieństwa (μ, log σ²)
+    # Sample'owanie z posterior → przedziały ufności dla predykcji
+    def forward(self, x, sample=True):
+        weight = self.weight_mu + weight_std * torch.randn_like(weight_std)
+```
+**Tego u nas BRAK** — nasze predykcje są punktowe bez przedziałów ufności. W dark pool detection uncertainty jest kluczowe (fałszywe alarmy są drogie).
+
+### Czego im BRAKUJE (nasza przewaga)
+
+| Czego nie mają | My mamy |
 |---|---|
-| Język | JavaScript / Python / Scala |
-| Gwiazdki | 0 |
-| Ostatnia aktualizacja | Mar 8, 2026 |
-| Licencja | Brak |
+| ❌ Prawdziwe dane rynkowe | ✅ FINRA ATS + YFinance live |
+| ❌ Docker / CI/CD | ✅ Pełny pipeline |
+| ❌ Web UI / API | ✅ Flask + Streamlit + REST |
+| ❌ Testy (0) | ✅ 157 testów |
+| ❌ VPIN / Iceberg detection | ✅ Obie metody z literatury |
+| ❌ Backtest | ✅ 4 strategie |
+| ❌ Alert system | ✅ JSONL/CSV |
+| ❌ Dokumentacja (poza README) | ✅ 17 KB README + PLAN.md |
+| ❌ Detekcja aktywności dark pool | ❌ Oni wykrywają FRAUD, nie samą aktywność |
 
-### Opis
-Platforma czasu rzeczywistego do wykrywania dark pool i block trade activity. Zbudowana na **Apache Kafka** (event streaming), **Spark Structured Streaming** (anomaly detection), i **React** (dashboard). Wszystko skonteneryzowane Dockerem.
+### Werdykt: **ML jest lepsze, produkt gorszy**
 
-### Architektura
-```
-darkpooldetector/
-├── data-ingestion/       # Kafka producers — pobieranie danych rynkowych
-├── spark-jobs/           # Spark Structured Streaming — detekcja anomalii
-├── api/                  # Backend API (Node.js/Express?)
-├── dashboard/            # React frontend
-└── docker-compose.yml    # Pełna orkiestracja (1.9 KB)
-```
+Ich ML jest 2 poziomy wyżej (TGNN + Transformer + Bayesian NN + XAI vs nasz XGBoost + LSTM + k-Means). Ale nie mają ŻADNEJ infrastruktury produkcyjnej. To projekt badawczy, nie system.
 
-### Stack technologiczny
-- **Streaming**: Apache Kafka (event-driven)
-- **Analityka**: Spark Structured Streaming (big data processing)
-- **Frontend**: React (live dashboard)
-- **Backend**: Node.js API
-- **Infrastruktura**: Docker Compose (wieloserwisowy)
-- **Języki**: JS + Python + Scala = 3 języki w jednym projekcie
-
-### Ciekawe aspekty
-1. **Kafka + Spark**: Enterprise-grade stack do real-time stream processingu — skaluje się do milionów eventów/s
-2. **Docker Compose (1.9 KB)**: Sugeruje złożoną infrastrukturę wieloserwisową
-3. **React Dashboard**: Live wizualizacja dark pool activity
-4. **Block trade detection**: Oprócz dark pool — wykrywanie dużych transakcji blokowych
-5. **3 języki programowania**: JS (frontend + API), Python (Spark jobs), Scala (Spark jobs)
-
-### Podobieństwa do naszego projektu
-- Docker Compose
-- Web dashboard (React vs nasz Flask/Streamlit)
-- Anomaly detection (Spark vs nasz Python)
-- API layer
-
-### Różnice
-- Enterprise stack (Kafka/Spark) vs nasz lekki Python pipeline
-- 3 języki vs nasz pure Python
-- Block trade focus (nie tylko dark pool)
-- Brak ML (same reguły/anomalie?)
-- Brak testów, brak CI/CD
-- Pusty README — projekt we wczesnej fazie
+**Co przejąć**: BACD model do TraderTypeClassifier, Bayesian uncertainty do predykcji, SHAP do explainability.
 
 ---
 
-## 3. stefluhh/realtime-stock-exchange-analysis
+## 2. sagarvrma/darkpooldetector — GŁĘBOKA ANALIZA KODU
 
-🔗 https://github.com/stefluhh/realtime-stock-exchange-analysis
+### Co NAPRAWDĘ jest w środku
 
-### Metryki
-| Pole | Wartość |
+```
+docker-compose.yml (1.9 KB):
+  ├── zookeeper       — Confluent 7.5.0
+  ├── kafka           — Confluent 7.5.0
+  ├── kafka-ui        — Dashboard do monitorowania Kafki
+  ├── spark-master    — Apache Spark 3.5.1
+  ├── spark-worker    — 4 GB RAM, 4 cores
+  └── fastapi          — Python 3.11-slim + FastAPI + uvicorn
+
+data-ingestion/producer.py (2.4 KB):
+  — Losowy generator trade'ów z 5% szansą na "BLOCK" trade
+  — Wysyła do Kafka topic 'market-trades'
+
+spark-jobs/detect_dark_pool.py (2.9 KB):
+  — Spark Structured Streaming czyta z Kafki
+  — 30-sekundowe okna sliding window
+  — Klasyfikacja: vol > 50000 = DARK_POOL_ALERT, vol > 20000 = SUSPICIOUS
+  — Wysyła alerty do Kafka topic 'dark-pool-alerts'
+
+api/main.py (2.6 KB):
+  — FastAPI z WebSocket endpointem
+  — Streamuje alerty do frontendu
+```
+
+### Brutalna prawda o kodzie
+
+**Spark job "detect_dark_pool.py" — CAŁA logika detekcji:**
+```python
+alerts = windowed.withColumn(
+    "signal",
+    when(col("total_volume") > 50000, "DARK_POOL_ALERT")
+    .when(col("total_volume") > 20000, "SUSPICIOUS")
+    .otherwise("NORMAL")
+)
+```
+
+To jest **pojedynczy próg wolumenowy**. Żadnego ML. Żadnego VPIN. Żadnej analizy order flow. Po prostu: "jeśli volume > 50k → dark pool alert".
+
+**Producer — CAŁA logika danych:**
+```python
+def generate_trade():
+    is_dark_pool_signal = random.random() < 0.05  # 5% szansy
+    if is_dark_pool_signal:
+        volume = random.randint(base_vol * 10, base_vol * 50)  # 10x-50x spike
+```
+
+Dane są **całkowicie losowe** — nie modelują żadnej rzeczywistej dynamiki rynkowej. Nasz OrderBookSimulator z GBM + informed trader agent + iceberg state machine jest o wiele bardziej realistyczny.
+
+### Co robi LEPIEJ niż my
+
+| Ich przewaga | Szczegóły |
 |---|---|
-| Język | Kotlin |
-| Gwiazdki | 0 |
-| Ostatnia aktualizacja | Feb 5, 2025 |
-| Licencja | Brak |
+| **Real-time streaming** | Kafka + Spark Structured Streaming — prawdziwy pipeline event-driven |
+| **Skalowalność** | Spark worker z 4 GB RAM / 4 cores — może przetwarzać miliony eventów |
+| **WebSocket push** | FastAPI WebSocket — alerty w czasie rzeczywistym do frontendu |
+| **Infrastruktura** | 7-serwisowy Docker Compose (prod-ready) |
 
-### Opis
-Aplikacja Spring Boot do analizy algorytmicznej US stock trades w czasie rzeczywistym, używająca **Polygon.io WebSocket API**. Przetwarza do **20 000 transakcji na sekundę**, filtruje dark pool data i aplikuje niestandardowe strategie analityczne. Zbudowana w **Kotlin + MongoDB**.
+### Co robi GORZEJ niż my
 
-### Architektura
-```
-realtime-stock-exchange-analysis/
-├── src/main/kotlin/com/stefluhh/
-│   ├── StockpriceStreamingAdapter.kt  # Polygon.io WebSocket stream
-│   ├── AnalysisService.kt             # Strategie analityczne
-│   ├── CandleAggregator.kt            # Agregacja 1-min/30-min candlesticks
-│   └── DarkPoolFilter.kt              # Filtrowanie dark pool trades
-├── pom.xml                 # 6.3 KB — Maven dependencies
-└── readme.md               # 3 KB — dokumentacja
-```
+| Nasza przewaga | Szczegóły |
+|---|---|
+| **ML / detection** | Ich "detekcja" to jeden if-statement. My mamy VPIN + iceberg + ML ensemble. |
+| **Dane** | Ich dane są losowe. Nasz symulator ma GBM + strategie traderów. |
+| **Metody akademickie** | Zero. My: ELO (2011), arXiv:1909.09495. |
+| **Backtest** | Brak. My: 4 strategie + walk-forward. |
+| **Testy** | Zero. My: 157. |
+| **Real market data** | Brak. My: FINRA ATS + YFinance live. |
 
-### Stack technologiczny
-- **Język**: Kotlin (JVM)
-- **Framework**: Spring Boot (WebFlux — reaktywny)
-- **Baza danych**: MongoDB
-- **Dane**: Polygon.io WebSocket API (płatne, real-time)
-- **Build**: Maven
+### Werdykt: **Infrastruktura świetna, logika detekcji żenująca**
 
-### Kluczowe koncepty techniczne
-1. **Polygon.io Trades WebSocket**: Streamuje KAŻDĄ pojedynczą transakcję z US exchanges (do 20k/s)
-2. **Dark Pool Filter**: Filtruje transakcje z dark pool exchanges ponieważ "trade volumes on these exchanges are so large, that no meaningful analysis is possible due to too much noise" — **ODWROTNY problem niż nasz** — oni usuwają dark pool, my go wykrywamy
-3. **Agregacja candlestick**: Z pojedynczych trade'ów tworzy 1-minutowe i 30-minutowe świece
-4. **Volume anomaly detection**: Wykrywanie skoków wolumenu 100-1000% w ciągu 1-2 minut
-5. **Wyzwanie**: Volume naturalnie spike'uje na zamknięciu sesji → filtrowanie ostatnich 40 minut
+Najlepsza architektura streamingowa ze wszystkich 4 repo — Kafka + Spark + FastAPI + React to stack produkcyjny. Ale sama "detekcja" to jeden twardy threshold na wolumenie. To tak jakby zbudować Fabrykę Tesla żeby produkować pinezki.
 
-### Podobieństwa do naszego projektu
-- Real-time processing
-- Volume anomaly detection
-- Dark pool awareness (ale odwrotne podejście)
-- Modularna architektura
-
-### Różnice
-- **Kotlin/JVM vs Python** — kompletnie inny ekosystem
-- **Usuwanie dark pool** vs wykrywanie go
-- Polygon.io (płatne API) vs nasze publiczne dane
-- Brak ML (reguły vs modele)
-- Brak Docker, testów, CI/CD
-- Production-grade performance (20k trades/s)
+**Co przejąć**: Kafka + Spark streaming pipeline, WebSocket push alerts, React dashboard jako Faza 9.
 
 ---
 
-## 4. skyreapermodder/Dark-Pool-Whale-Order-Flow-Sniffer
+## 3. stefluhh/realtime-stock-exchange-analysis — GŁĘBOKA ANALIZA
 
-🔗 https://github.com/skyreapermodder/Dark-Pool-Whale-Order-Flow-Sniffer
+### Co NAPRAWDĘ jest w środku
 
-### Metryki
-| Pole | Wartość |
+```
+Kotlin / Spring Boot / Maven:
+├── StockpriceStreamingAdapter.kt  — Polygon.io WebSocket (20k trades/s)
+├── CandleAggregator.kt            — Agregacja 1-min + 30-min candlesticks
+├── DarkPoolFilter.kt              — FILTRUJE (usuwa) dark pool trades
+├── AnalysisService.kt             — Volume anomaly detection
+└── MongoDB                        — Storage
+```
+
+### Paradoks tego projektu
+
+Autor **CELOWO USUWA dark pool trades** ze swojego strumienia danych:
+
+> "The problem with aggregated data is that they contain trades from dark pool stock exchanges, which are used mainly for professional trading by financial institutions. Trade volumes on these exchanges are so large, that no meaningful analysis is possible due to too much noise."
+
+**Oni widzą dark pool jako SZUM do odfiltrowania.** My widzimy go jako SYGNAŁ do wykrycia. Kompletnie przeciwne podejście.
+
+### Co robi LEPIEJ niż my
+
+| Ich przewaga | Szczegóły |
 |---|---|
-| Język | Binary (Windows .exe) |
-| Gwiazdki | 0 |
-| Ostatnia aktualizacja | 3 godziny temu |
-| Licencja | Brak |
+| **Throughput** | 20 000 trades/s na Polygon.io — prawdziwy production-grade |
+| **Prawdziwe dane** | Polygon.io WebSocket — nie symulowane, realne US equity trades |
+| **Dark pool awareness** | Rozpoznają dark pool exchanges i je filtrują (odwrotność naszego celu) |
+| **JVM performance** | Kotlin + Spring WebFlux — reaktywny, nieblokujący I/O |
+| **Produkcyjny kod** | Maven, MongoDB, error handling — kod pisany z myślą o produkcji |
 
-### Opis
-Narzędzie desktopowe (Windows) do wykrywania dużych ukrytych zleceń ("whale orders") i analizy dark pool activity na rynkach **kryptowalut**. Śledzi order flow, dane blockchain, volume spikes i liquidity w czasie zbliżonym do rzeczywistego.
+### Co robi GORZEJ niż my
 
-### Architektura
-```
-Dark-Pool-Whale-Order-Flow-Sniffer/
-├── README.md                           # 5.7 KB — instrukcja
-└── unprovokable/
-    └── Pool-Sniffer-Flow-Whale-Dark-Order-v2.1-beta.4.zip  # Binarka
-```
+| Nasza przewaga | Szczegóły |
+|---|---|
+| **Cel** | My DETEKUJEMY dark pool, oni go USUWAJĄ |
+| **ML** | Brak — same progi wolumenowe |
+| **Metody akademickie** | Zero |
+| **Web UI** | Brak — tylko backend |
+| **Docker** | Brak |
+| **Testy** | Brak |
+| **Backtest** | Brak |
 
-### Cechy (z README)
-- 🐳 **Whale detection**: Wykrywanie dużych zleceń od instytucji
-- 🌑 **Dark pool activity**: Sygnały z off-exchange trades
-- 📊 **Volume spike alerts**: Powiadomienia o nietypowym wolumenie
-- 🔗 **Blockchain monitoring**: Śledzenie transakcji on-chain (Ethereum)
-- 📈 **Wykresy i alerty**: Wizualna prezentacja sygnałów
-- 🪙 **Multi-asset**: Ethereum + inne główne kryptowaluty
-- 🖥️ **GUI**: Interfejs desktopowy (bez programowania)
+### Werdykt: **Najlepszy engineering, zły cel (dla nas)**
 
-### Stack technologiczny (nieznany — zamknięte źródło)
-- **Platforma**: Windows only (.exe installer)
-- **Dane**: Prawdopodobnie API giełd krypto (Binance, Coinbase?)
-- **Blockchain**: Ethereum RPC / WebSocket
-- **UI**: Desktop GUI (Electron? C#? Python + Qt?)
+Najbardziej dopracowany technicznie pod kątem high-frequency data. Ale architektura jest DOKŁADNIE ODWROTNA od naszego celu. To tak jakby mieć najlepszy na świecie system antywłamaniowy... który ignoruje wszystkie włamania i skupia się na pogodzie.
 
-### Ciekawe aspekty
-1. **Krypto ≠ TradFi**: Jedyny projekt skupiony na krypto, nie akcjach
-2. **Zamknięte źródło**: Brak kodu — tylko binarka .exe
-3. **v2.1-beta.4**: Aktywnie rozwijany (update 3h temu)
-4. **"Unprovokable"**: Nietypowa nazwa katalogu
-5. **Desktop-only**: Brak web UI, API, Dockera
-6. **Łatwość użycia**: "You do not need any programming skill" — target: retail trader
-
-### Podobieństwa do naszego projektu
-- Whale/large order detection (nasz iceberg detection)
-- Dark pool activity monitoring
-- Volume spike alerts (nasz anomaly detection)
-- Real-time/near real-time
-
-### Różnice
-- **Zamknięte źródło** — nie możemy analizować kodu
-- **Krypto vs Equities** — inny rynek, inne dane
-- **Desktop GUI vs Web** — inny model dystrybucji
-- **Brak ML** (prawdopodobnie reguły/heurystyki)
-- **Windows-only** — brak cross-platform
-- **Brak API / testów / CI/CD**
-- **Brak Docker** — manualna instalacja
+**Co przejąć**: Polygon.io WebSocket jako opcjonalne źródło danych (zamiast symulacji), Spring WebFlux podejście do nieblokującego I/O.
 
 ---
 
-## 📊 Porównanie z naszym projektem (sirfragles/dark-pool-detection)
+## 📊 ZBIORCZE PORÓWNANIE (tylko meritum)
 
-| Kryterium | Nasz | #1 Fraud Detection | #2 DarkPool Detector | #3 Stock Analysis | #4 Whale Sniffer |
-|---|---|---|---|---|---|
-| **Język** | Python | Python | JS+Py+Scala | Kotlin | Binary .exe |
-| **Open source** | ✅ Tak | ✅ Tak | ✅ Tak | ✅ Tak | ❌ Nie |
-| **Docker** | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **CI/CD** | ✅ GitHub Actions | ❌ | ❌ | ❌ | ❌ |
-| **Testy** | ✅ 157 testów | ❌ | ❌ | ❌ | ❌ |
-| **Web UI** | ✅ Flask + Streamlit | ❌ (CLI) | ✅ React | ❌ | ✅ Desktop GUI |
-| **REST API** | ✅ 7 endpointów | ❌ | ✅ | ❌ | ❌ |
-| **ML/Deep Learning** | ✅ XGBoost + LSTM + Clustering | ✅ TGNN + Transformer | ❌ (reguły) | ❌ (reguły) | ❌ (reguły?) |
-| **Real-time** | ⚠️ Symulowane | ✅ | ✅ Kafka/Spark | ✅ 20k trades/s | ✅ Near real-time |
-| **Public data** | ✅ FINRA + YFinance | ❌ | ❌ | ❌ Polygon ($) | ❌ Krypto API |
-| **Backtest** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Alert system** | ✅ JSONL/CSV | ❌ | ⚠️ Dashboard | ❌ | ✅ Desktop alerts |
-| **VPIN** | ✅ ELO (2011) | ❌ | ❌ | ❌ | ❌ |
-| **Iceberg detection** | ✅ arXiv:1909.09495 | ❌ | ❌ | ❌ | ⚠️ Whale orders |
-| **Trader classification** | ✅ GMM/KMeans | ❌ | ❌ | ❌ | ❌ |
-| **Dokumentacja** | ✅ README 17 KB | ✅ README 4.6 KB | ❌ Pusta | ✅ readme 3 KB | ✅ README 5.7 KB |
-| **Licencja** | ❌ Brak | ❌ Brak | ❌ Brak | ❌ Brak | ❌ Brak |
-| **Rynek** | US Equities | US Equities | US Equities | US Equities | Crypto |
-| **Aktywność** | Aktywny (dziś) | Sep 2025 | Mar 2026 | Feb 2025 | Aktywny (3h temu) |
+### Gdzie NAPRAWDĘ mają przewagę
 
-## 🎯 Wnioski
+| Repo | Co robią lepiej | Czy warto to przejąć? | Priorytet |
+|---|---|---|---|
+| **#1 Fraud** | TGNN + HAR-BACD-V + XAI (SHAP/LIME) + Bayesian Uncertainty | ✅ TAK — BACD model do TraderType, BNN do uncertainty | 🔴 HIGH |
+| **#2 DarkPool** | Kafka + Spark streaming + WebSocket alerts | ✅ TAK — architektura real-time | 🟡 MEDIUM |
+| **#3 Stock** | Polygon.io WebSocket (20k trades/s) | ⚠️ Tak, ale jako opcjonalne źródło ($) | 🟢 LOW |
+| **#3 Stock** | Świadomość które exchange to dark pool | ✅ TAK — lista venue do filtrowania | 🟢 LOW |
 
-### Co nas wyróżnia
+### Gdzie MY mamy przewagę (i to znaczącą)
 
-1. **Najbardziej kompletny projekt**: Jesteśmy jedynym repo które ma testy + CI/CD + Docker + Web UI + API + ML + backtest + alerty w jednym
+| Nasz moduł | Oni | Przewaga |
+|---|---|---|
+| **VPIN (ELO 2011)** | ❌ Nikt nie ma | Jedyna implementacja wśród 4 repo |
+| **Iceberg Detection (arXiv:1909)** | ❌ Nikt nie ma | Jedyna implementacja |
+| **Backtest (4 strategie)** | ❌ Nikt nie ma | Zero u konkurencji |
+| **Testy (157)** | ❌ Nikt nie ma | Zero u konkurencji |
+| **CI/CD** | ❌ Nikt nie ma | Tylko my |
+| **Public data (FINRA)** | ❌ Nikt nie ma | #3 wymaga płatnego Polygon |
+| **Dokumentacja** | ❌ #2 pusta, #1/#3 podstawowa | Jedyny z PLAN.md |
+| **Trader Classification** | ❌ Nikt nie ma | Jedyna implementacja GMM |
+| **Dark Volume Reconstruction** | ❌ Nikt nie ma | Jedyna implementacja |
 
-2. **Jedyny z VPIN**: Implementacja Volume-Synchronized PIN (Easley, López de Prado, O'Hara 2011) — nikt inny tego nie ma
+### Kluczowy wniosek
 
-3. **Jedyny z iceberg detection**: Metoda z literatury akademickiej (arXiv:1909.09495)
+NIKT z konkurencji nie łączy **detection + ML + backtest + web + API + Docker + CI/CD + testy** w jednym projekcie. Każdy robi JEDNĄ rzecz dobrze:
+- #1 = super ML, zero infra
+- #2 = super infra, zerowa detekcja  
+- #3 = super engineering, przeciwny cel
 
-4. **Jedyny z backtestem**: Możliwość testowania strategii tradingowych na sygnałach
-
-5. **Public data first**: Nie wymagamy płatnych API (Polygon) — wszystko z publicznych źródeł
-
-### Co możemy poprawić (inspiracje z innych repo)
-
-| Od kogo | Co przejąć |
-|---|---|
-| #2 DarkPool Detector | **Real-time streaming** (Kafka) — nasz pipeline jest batchowy. Warto dodać WebSocket ingest. |
-| #3 Stock Analysis | **High-throughput processing** (20k trades/s) — nasz symulator to tylko prototyp. Polygon.io API jako opcjonalny source. |
-| #3 Stock Analysis | **Dark pool filter** (odwrotne podejście) — ciekawe, że niektórzy UWAŻAJĄ dark pool za szum do odfiltrowania |
-| #1 Fraud Detection | **TGNN + Transformer** — bardziej zaawansowane ML niż nasz XGBoost/LSTM. Warto jako Faza 9. |
-| #4 Whale Sniffer | **Krypto support** — rozszerzenie na rynek krypto (Ethereum mempool analysis) |
-
-### Czego unikać
-
-- ❌ **Zamknięte źródło** (#4) — brak transparentności
-- ❌ **3 języki** (#2) — koszmar utrzymania
-- ❌ **Płatne API jako jedyne źródło** (#3) — vendor lock-in
-- ❌ **Brak testów** (wszyscy poza nami) — nieprofesjonalne
+**My jesteśmy jedynym PRODUKTEM, nie tylko eksperymentem.**
